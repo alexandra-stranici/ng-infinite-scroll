@@ -1,20 +1,22 @@
-angular.module('ash', []).directive("ngInfiniteScroll", function ($timeout, Data, Resource) {
+var ash = angular.module('ash', []).directive("ngInfiniteScroll", function ($timeout, Data, Resource) {
 
   return {
     restrict: 'A',
     scope: {
-      options: '=',
-      items: '='
+      options: '=?',
+      items: '=?'
     },
     link: function ($scope, element) {
-      $scope.lastRemain = undefined;
-      $scope.offset = 0;
-      $scope.inProcess = false;
       $scope.options = angular.extend({
         limit: 10,
         threshold: 50,
-        data: []
-      }, $scope.options);
+        data: [],
+        onDocument: false
+      }, $scope.options ? $scope.options : {});
+
+      $scope.lastRemain = undefined;
+      $scope.offset = 0;
+      $scope.inProcess = false;
       $scope.hasItems = true;
 
       if (!$scope.options.resource && !Array.isArray($scope.options.data)) {
@@ -23,9 +25,7 @@ angular.module('ash', []).directive("ngInfiniteScroll", function ($timeout, Data
       $scope.strategy = $scope.options.resource ? Resource : Data;
       $scope.strategy.addItems($scope);
 
-      element.bind('scroll', function () {
-        var remain = element[0].scrollHeight - (element[0].clientHeight + element[0].scrollTop);
-
+      var checkRemainSpace = function(remain) {
         if (remain < $scope.options.threshold && (!$scope.lastRemain || (remain - $scope.lastRemain) < 0) && $scope.hasItems && !$scope.inProcess) {
           $scope.$apply(function() {
             $scope.strategy.addItems($scope);
@@ -33,13 +33,26 @@ angular.module('ash', []).directive("ngInfiniteScroll", function ($timeout, Data
         }
 
         $scope.lastRemain = remain;
-      });
+      };
+
+      if ($scope.options.onDocument) {
+        $(document).bind('scroll', function () {
+
+          var remain = document.documentElement.scrollHeight - (document.documentElement.clientHeight + document.documentElement.scrollTop);
+          checkRemainSpace(remain);
+        });
+      } else {
+        element.bind('scroll', function () {
+          var remain = element[0].scrollHeight - (element[0].clientHeight + element[0].scrollTop);
+          checkRemainSpace(remain);
+        });
+      }
     }
   }
 
 });
 
-app.factory('Data', function() {
+ash.factory('Data', function() {
   return {
     addItems: function($scope) {
       $scope.inProcess = true;
@@ -63,18 +76,18 @@ app.factory('Data', function() {
   };
 });
 
-app.factory('Resource', function() {
+ash.factory('Resource', function() {
   return {
     addItems: function($scope) {
       $scope.inProcess = true;
       $scope.options.resource.query(
         { offset: $scope.offset * $scope.options.limit, limit: $scope.options.limit },
         function (data) {
-          if (data.models.length == 0) {
+          if (data.length == 0) {
             $scope.hasItems = false;
           } else {
-            for (var i = 0; i < data.models.length; i++) {
-              $scope.items = $scope.items.concat(data.models[i]);
+            for (var i = 0; i < data.length; i++) {
+              $scope.items = $scope.items.concat(data[i]);
             }
           }
 

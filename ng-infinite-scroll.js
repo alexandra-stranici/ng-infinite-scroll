@@ -52,7 +52,7 @@ var ash = angular.module('ash', []).directive("ngInfiniteScroll", function ($tim
 
       if ($scope.options.onDocument) {
         $(document).bind('scroll', function () {
-          var remain = document.documentElement.scrollHeight - (document.documentElement.clientHeight + document.documentElement.scrollTop);
+          var remain = document.documentElement.scrollHeight - (document.documentElement.clientHeight + window.pageYOffset || document.documentElement.scrollTop);
           checkRemainSpace(remain);
         });
       } else {

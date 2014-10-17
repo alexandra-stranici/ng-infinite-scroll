@@ -19,10 +19,23 @@ var ash = angular.module('ash', []).directive("ngInfiniteScroll", function ($tim
       $scope.inProcess = false;
       $scope.hasItems = true;
 
-      if (!$scope.options.resource && !Array.isArray($scope.options.data)) {
+      if (!$scope.options.data.resource && !Array.isArray($scope.options.data)) {
         $scope.options.data = [$scope.options.data];
       }
-      $scope.strategy = $scope.options.resource ? Resource : Data;
+      if ($scope.options.data.resource) {
+        $scope.strategy = Resource;
+        $scope.$watch('options.data.filter', function() {
+          console.log('filter');
+          $scope.items = [];
+          $scope.lastRemain = undefined;
+          $scope.offset = 0;
+          $scope.inProcess = false;
+          $scope.hasItems = true;
+          $scope.strategy.addItems($scope);
+        }, true);
+      } else {
+        $scope.strategy = Data;
+      }
       $scope.strategy.addItems($scope);
 
       var checkRemainSpace = function(remain) {
@@ -37,7 +50,6 @@ var ash = angular.module('ash', []).directive("ngInfiniteScroll", function ($tim
 
       if ($scope.options.onDocument) {
         $(document).bind('scroll', function () {
-
           var remain = document.documentElement.scrollHeight - (document.documentElement.clientHeight + document.documentElement.scrollTop);
           checkRemainSpace(remain);
         });
@@ -80,8 +92,13 @@ ash.factory('Resource', function() {
   return {
     addItems: function($scope) {
       $scope.inProcess = true;
-      $scope.options.resource.query(
+      var params = angular.extend(
         { offset: $scope.offset * $scope.options.limit, limit: $scope.options.limit },
+        $scope.options.data.filter
+      );
+      
+      $scope.options.data.resource.query(
+        params,
         function (data) {
           if (data.length == 0) {
             $scope.hasItems = false;
@@ -89,6 +106,7 @@ ash.factory('Resource', function() {
             for (var i = 0; i < data.length; i++) {
               $scope.items = $scope.items.concat(data[i]);
             }
+            $scope.offset++;
           }
 
           $scope.inProcess = false;
